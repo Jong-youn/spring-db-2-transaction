@@ -21,7 +21,7 @@ public class InitTTest {
 
     @Test
     void go() {
-        
+
     }
 
     @TestConfiguration
@@ -38,6 +38,7 @@ public class InitTTest {
         @PostConstruct
         @Transactional
         public void initV1() {
+            // 초기화 코드가 먼저 호출되고, 그 다음에 트랜잭션 AOP가 적용된다.
             boolean isActive = TransactionSynchronizationManager.isActualTransactionActive();
             log.info("Hello init @Postconstruct tx active={}", isActive);
         }
@@ -45,6 +46,7 @@ public class InitTTest {
         @EventListener(value = ApplicationReadyEvent.class)
         @Transactional
         public void init2() {
+            // 스프링 컨테이너가 완성된 후에 호출
             boolean isActive = TransactionSynchronizationManager.isActualTransactionActive();
             log.info("Hello init ApplicationReadyEvent tx active={}", isActive);
         }
