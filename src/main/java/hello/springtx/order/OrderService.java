@@ -12,6 +12,7 @@ public class OrderService {
 
     private final OrderRepository orderRepository;
 
+    //JPA는 트랜잭션 커밋 시점에 Order 데이터를 DB에 반영한다.
     @Transactional
     public void order(Order order) throws NotEnoughMoneyException {
         log.info("order 호출");

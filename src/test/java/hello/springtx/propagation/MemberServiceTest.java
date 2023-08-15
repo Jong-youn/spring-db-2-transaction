@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.transaction.UnexpectedRollbackException;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.*;
@@ -22,6 +23,11 @@ public class MemberServiceTest {
     @Autowired
     LogRepository logRepository;
 
+    /**
+     * memberService        @Transactional: OFF
+     * memberRepository     @Transactional: ON
+     * logRepository        @Transactional: ON
+     */
     @Test
     void outerTxOff_success() {
         // given
@@ -30,11 +36,16 @@ public class MemberServiceTest {
         // when
         memberService.joinV1(username);
 
-        // then
+        // then: 모든 데이터가 정상 저장된다.
         assertTrue(memberRepository.find(username).isPresent());
         assertTrue(logRepository.find(username).isPresent());
     }
 
+    /**
+     * memberService        @Transactional: OFF
+     * memberRepository     @Transactional: ON
+     * logRepository        @Transactional: ON Exception
+     */
     @Test
     void outerTxOff_fail() {
         // given
@@ -46,9 +57,14 @@ public class MemberServiceTest {
 
         // then: 완전히 롤백되지 않고, member 데이터가 남아서 저장된다.
         assertTrue(memberRepository.find(username).isPresent());
-        assertTrue(logRepository.find(username).isPresent());
+        assertTrue(logRepository.find(username).isEmpty());
     }
 
+    /**
+     * memberService        @Transactional: ON
+     * memberRepository     @Transactional: OFF
+     * logRepository        @Transactional: OFF
+     */
     @Test
     void singleTx() {
         // given
@@ -57,11 +73,16 @@ public class MemberServiceTest {
         // when
         memberService.joinV1(username);
 
-        // then
+        // then: 모든 데이터가 정상 저장된다.
         assertTrue(memberRepository.find(username).isPresent());
         assertTrue(logRepository.find(username).isPresent());
     }
 
+    /**
+     * memberService        @Transactional: ON
+     * memberRepository     @Transactional: ON
+     * logRepository        @Transactional: ON
+     */
     @Test
     void outerTxOn_success() {
         // given
@@ -75,6 +96,11 @@ public class MemberServiceTest {
         assertTrue(logRepository.find(username).isPresent());
     }
 
+    /**
+     * memberService        @Transactional: ON
+     * memberRepository     @Transactional: ON
+     * logRepository        @Transactional: ON Exception
+     */
     @Test
     void outer_TxOn_fail() {
         // given
@@ -84,11 +110,16 @@ public class MemberServiceTest {
         assertThatThrownBy(() -> memberService.joinV1(username))
                 .isInstanceOf(RuntimeException.class);
 
-        // then
+        // then: 모든 데이터가 롤백된다. (데이터 정합성에 문제가 생기지 않는다)
         assertTrue(memberRepository.find(username).isEmpty());
         assertTrue(logRepository.find(username).isEmpty());
     }
 
+    /**
+     * memberService        @Transactional: ON
+     * memberRepository     @Transactional: ON
+     * logRepository        @Transactional: ON Exception
+     */
     @Test
     void recoverException_fail() {
         // given
@@ -96,13 +127,18 @@ public class MemberServiceTest {
 
         // when
         assertThatThrownBy(() -> memberService.joinV2(username))
-                .isInstanceOf(RuntimeException.class);
+                .isInstanceOf(UnexpectedRollbackException.class);
 
         // then: 모든 데이터가 롤백된다.
         assertTrue(memberRepository.find(username).isEmpty());
         assertTrue(logRepository.find(username).isEmpty());
     }
 
+    /**
+     * memberService        @Transactional: ON
+     * memberRepository     @Transactional: ON
+     * logRepository        @Transactional: ON(REQUIRES_NEW) Exception
+     */
     @Test
     void recoverException_success() {
         // given
@@ -111,7 +147,7 @@ public class MemberServiceTest {
         // when
         memberService.joinV2(username);
 
-        // then
+        // then: requires_new를 사용한 log 데이터만 롤백
         assertTrue(memberRepository.find(username).isPresent());
         assertTrue(logRepository.find(username).isEmpty());
     }
